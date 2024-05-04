@@ -1,5 +1,6 @@
 "use client";
 
+import {CSSProperties} from "react";
 import { useQuery } from "convex/react";
 
 import { api } from "@/convex/_generated/api";
@@ -8,9 +9,18 @@ import { EmptyFavorites } from "./empty-favorites";
 
 // import { BoardCard } from "./board-card";
 // import { EmptySearch } from "./empty-search";
-// import { EmptyBoards } from "./empty-boards";
+import { EmptyBoards } from "./empty-boards";
 // import { EmptyFavorites } from "./empty-favorites";
 // import { NewBoardButton } from "./new-board-button";
+
+import PulseLoader from "react-spinners/PulseLoader";
+
+
+// const override: CSSProperties = {
+//   display: "block",
+//   margin: "0 auto",
+//   borderColor: "red",
+// };
 
 interface BoardListProps {
   orgId: string;
@@ -20,8 +30,25 @@ interface BoardListProps {
   };
 }
 
+
+
 export const BoardList = ({ orgId, query }: BoardListProps) => {
-  const data = [];
+  const data = useQuery(api.boards.get, {
+    orgId,
+    ...query,
+  });
+
+  if (data === undefined) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <PulseLoader 
+        color="#36d7b7"
+        size={30}
+        aria-label="Loading Spinner"
+        data-testid="loader"/>
+      </div>
+    );
+  }
 
   if (!data?.length && query.search) {
     return <EmptySearch />;
@@ -31,5 +58,9 @@ export const BoardList = ({ orgId, query }: BoardListProps) => {
     return <EmptyFavorites />;
   }
 
-  return <div>{JSON.stringify(query)}</div>;
+  if (!data?.length) {
+    return <EmptyBoards />;
+  }
+
+  return <div>{JSON.stringify(data)}</div>;
 };
