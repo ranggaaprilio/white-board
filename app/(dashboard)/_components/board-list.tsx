@@ -1,6 +1,4 @@
 "use client";
-
-import {CSSProperties} from "react";
 import { useQuery } from "convex/react";
 
 import { api } from "@/convex/_generated/api";
@@ -8,19 +6,12 @@ import { EmptySearch } from "./empty-search";
 import { EmptyFavorites } from "./empty-favorites";
 
 // import { BoardCard } from "./board-card";
-// import { EmptySearch } from "./empty-search";
 import { EmptyBoards } from "./empty-boards";
-// import { EmptyFavorites } from "./empty-favorites";
 // import { NewBoardButton } from "./new-board-button";
 
 import PulseLoader from "react-spinners/PulseLoader";
 
 
-// const override: CSSProperties = {
-//   display: "block",
-//   margin: "0 auto",
-//   borderColor: "red",
-// };
 
 interface BoardListProps {
   orgId: string;
