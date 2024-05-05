@@ -31,7 +31,7 @@ export const BoardList = ({ orgId, query }: BoardListProps) => {
 
   if (data === undefined) {
     return (
-      <div>
+      <div className="h-full">
         <h2 className="text-3xl">
           {query.favorites ? "Favorite boards" : "Team boards"}
         </h2>
