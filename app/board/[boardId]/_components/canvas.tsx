@@ -196,12 +196,13 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     e.preventDefault();
 
     let deltaX = e.deltaX;
-    let deltaY = e.deltaY;
+    let deltaY = -e.deltaY; // Invert vertical scroll
 
     if (e.shiftKey) {
       // Swap deltaX and deltaY if Shift key is pressed
-      deltaX = e.deltaY;
-      deltaY = e.deltaX;
+      const temp = deltaX;
+      deltaX = deltaY;
+      deltaY = temp;
     }
     setCamera((camera) => ({
       x: camera.x + deltaX,
