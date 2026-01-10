@@ -239,11 +239,11 @@ const LandingPage = () => {
           <div className="flex flex-wrap justify-center items-center gap-12 opacity-50">
             {[
               "Acme Corp",
-              "TechStart",
-              "InnovateCo",
-              "FutureLabs",
-              "CloudSync",
-              "DataFlow",
+              "LoremIpsum",
+              "JohnDoe Inc.",
+              "Consectetur",
+              "Adipiscing",
+              "Eiusmod",
             ].map((company) => (
               <span key={company} className="text-xl font-bold text-slate-400">
                 {company}
