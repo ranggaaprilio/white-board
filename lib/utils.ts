@@ -24,11 +24,12 @@ export function connectionIdToColor(connectionId: number): string {
 
 export function pointerEventToCanvasPoint(
   e: React.PointerEvent,
-  camera: Camera
+  camera: Camera,
+  scale: number = 1,
 ) {
   return {
-    x: Math.round(e.clientX) - camera.x,
-    y: Math.round(e.clientY) - camera.y,
+    x: (Math.round(e.clientX) - camera.x) / scale,
+    y: (Math.round(e.clientY) - camera.y) / scale,
   };
 }
 
@@ -71,7 +72,7 @@ export function findIntersectingLayersWithRectangle(
   layerIds: readonly string[],
   layers: ReadonlyMap<string, Layer>,
   a: Point,
-  b: Point
+  b: Point,
 ) {
   const rect = {
     x: Math.min(a.x, b.x),
@@ -112,7 +113,7 @@ export function getContrastingTextColor(color: Color) {
 
 export function penPointsToPathLayer(
   points: number[][],
-  color: Color
+  color: Color,
 ): PathLayer {
   if (points.length < 2) {
     throw new Error("Cannot transform points with less than 2 points");
@@ -163,7 +164,7 @@ export function getSvgPathFromStroke(stroke: number[][]) {
       acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
       return acc;
     },
-    ["M", ...stroke[0], "Q"]
+    ["M", ...stroke[0], "Q"],
   );
 
   d.push("Z");

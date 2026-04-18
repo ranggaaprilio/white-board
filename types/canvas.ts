@@ -119,6 +119,11 @@ export type CanvasState =
       mode: CanvasMode.Resizing;
       initialBounds: XYWH;
       corner: Side;
+    }
+  | {
+      mode: CanvasMode.Panning;
+      lastClientX: number;
+      lastClientY: number;
     };
 
 export enum CanvasMode {
@@ -129,6 +134,7 @@ export enum CanvasMode {
   Inserting,
   Resizing,
   Pencil,
+  Panning,
 }
 
 export type Layer =

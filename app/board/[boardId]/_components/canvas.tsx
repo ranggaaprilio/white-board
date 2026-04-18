@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { Info } from "./info";
 import { Participants } from "./participants";
 import { Toolbar } from "./toolbar";
@@ -61,6 +61,10 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     x: 0,
     y: 0,
   });
+  const [scale, setScale] = useState(1);
+  const MIN_SCALE = 0.1;
+  const MAX_SCALE = 5;
+  const svgRef = useRef<SVGSVGElement>(null);
   const [lastUsedColor, setLastUsedColor] = useState<Color>({
     r: 0,
     g: 0,
@@ -79,7 +83,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         | LayerType.Rectangle
         | LayerType.Text
         | LayerType.Note,
-      position: Point
+      position: Point,
     ) => {
       const liveLayers = storage.get("layers");
       if (liveLayers.size >= MAX_LAYERS) {
@@ -106,14 +110,14 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         },
         {
           addToHistory: true,
-        }
+        },
       );
 
       setCanvasState({
         mode: CanvasMode.None,
       });
     },
-    [lastUsedColor]
+    [lastUsedColor],
   );
 
   const translateSelectedLayer = useMutation(
@@ -143,7 +147,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         current: point,
       });
     },
-    [canvasState]
+    [canvasState],
   );
 
   const UnselectLayers = useMutation(({ self, setMyPresence }) => {
@@ -157,7 +161,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
       },
       {
         addToHistory: true,
-      }
+      },
     );
   }, []);
 
@@ -185,13 +189,13 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         layersIds,
         layers,
         origin,
-        current
+        current,
       );
       setMyPresence({
         selection: ids,
       });
     },
-    [layersIds]
+    [layersIds],
   );
 
   const continueDrawing = useMutation(
@@ -216,7 +220,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             : [...pencilDraft, [point.x, point.y, e.pressure]],
       });
     },
-    [canvasState.mode]
+    [canvasState.mode],
   );
 
   const insertPath = useMutation(
@@ -239,7 +243,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
       liveLayers.set(
         id,
-        new LiveObject(penPointsToPathLayer(pencilDraft, lastUsedColor))
+        new LiveObject(penPointsToPathLayer(pencilDraft, lastUsedColor)),
       );
 
       const liveLayerIds = storage.get("layerIds");
@@ -253,7 +257,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         mode: CanvasMode.Pencil,
       });
     },
-    [lastUsedColor]
+    [lastUsedColor],
   );
 
   const startDrawing = useMutation(
@@ -263,7 +267,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         penColor: lastUsedColor,
       });
     },
-    [lastUsedColor]
+    [lastUsedColor],
   );
 
   const resizeSelectedLayer = useMutation(
@@ -275,7 +279,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
       const bounds = resizeBounds(
         canvasState.initialBounds,
         canvasState.corner,
-        point
+        point,
       );
 
       const liveLayers = storage.get("layers");
@@ -284,7 +288,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         layer.update(bounds);
       }
     },
-    [canvasState]
+    [canvasState],
   );
 
   const onResizeHandlePointerDown = useCallback(
@@ -296,7 +300,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         corner,
       });
     },
-    [history]
+    [history],
   );
 
   /**
@@ -304,14 +308,31 @@ export const Canvas = ({ boardId }: CanvasProps) => {
    *
    * @param {React.WheelEvent} e - The wheel event object.
    */
-  const onWheel = useCallback((e: React.WheelEvent) => {
+  const onWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
 
+    if (e.ctrlKey) {
+      const zoomFactor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+      setScale((prevScale) => {
+        const newScale = Math.min(
+          MAX_SCALE,
+          Math.max(MIN_SCALE, prevScale * zoomFactor),
+        );
+        const mx = e.clientX;
+        const my = e.clientY;
+        setCamera((prevCamera) => ({
+          x: mx - (mx - prevCamera.x) * (newScale / prevScale),
+          y: my - (my - prevCamera.y) * (newScale / prevScale),
+        }));
+        return newScale;
+      });
+      return;
+    }
+
     let deltaX = e.deltaX;
-    let deltaY = -e.deltaY; // Invert vertical scroll
+    let deltaY = -e.deltaY;
 
     if (e.shiftKey) {
-      // Swap deltaX and deltaY if Shift key is pressed
       const temp = deltaX;
       deltaX = deltaY;
       deltaY = temp;
@@ -325,9 +346,18 @@ export const Canvas = ({ boardId }: CanvasProps) => {
   const onPointerMove = useMutation(
     ({ setMyPresence }, e: React.PointerEvent) => {
       e.preventDefault();
-      const current = pointerEventToCanvasPoint(e, camera);
+      const current = pointerEventToCanvasPoint(e, camera, scale);
 
-      if (canvasState.mode === CanvasMode.Pressing) {
+      if (canvasState.mode === CanvasMode.Panning) {
+        const dx = e.clientX - canvasState.lastClientX;
+        const dy = e.clientY - canvasState.lastClientY;
+        setCamera((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+        setCanvasState({
+          mode: CanvasMode.Panning,
+          lastClientX: e.clientX,
+          lastClientY: e.clientY,
+        });
+      } else if (canvasState.mode === CanvasMode.Pressing) {
         startMultiSelection(current, canvasState.origin);
       } else if (canvasState.mode === CanvasMode.SelectionNet) {
         // Handle selection net
@@ -346,13 +376,14 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     },
     [
       camera,
+      scale,
       canvasState,
       resizeSelectedLayer,
       continueDrawing,
       translateSelectedLayer,
       updateSelectionNet,
       startMultiSelection,
-    ]
+    ],
   );
 
   const onPointerLeave = useMutation(({ setMyPresence }) => {
@@ -363,7 +394,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      const point = pointerEventToCanvasPoint(e, camera);
+      const point = pointerEventToCanvasPoint(e, camera, scale);
       if (canvasState.mode === CanvasMode.Inserting) {
         return;
       }
@@ -374,20 +405,22 @@ export const Canvas = ({ boardId }: CanvasProps) => {
       }
 
       setCanvasState({
-        origin: point,
-        mode: CanvasMode.Pressing,
+        mode: CanvasMode.Panning,
+        lastClientX: e.clientX,
+        lastClientY: e.clientY,
       });
     },
-    [camera, canvasState.mode, setCanvasState, startDrawing]
+    [camera, scale, canvasState.mode, setCanvasState, startDrawing],
   );
 
   const onPointerUp = useMutation(
     ({}, e) => {
-      const point = pointerEventToCanvasPoint(e, camera);
+      const point = pointerEventToCanvasPoint(e, camera, scale);
 
       if (
         canvasState.mode === CanvasMode.None ||
-        canvasState.mode === CanvasMode.Pressing
+        canvasState.mode === CanvasMode.Pressing ||
+        canvasState.mode === CanvasMode.Panning
       ) {
         UnselectLayers();
         setCanvasState({
@@ -407,13 +440,14 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     },
     [
       camera,
+      scale,
       canvasState,
       history,
       insertLayer,
       UnselectLayers,
       insertPath,
       setCanvasState,
-    ]
+    ],
   );
 
   const selections = useOthersMapped((other) => other.presence.selection);
@@ -430,7 +464,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
       history.pause();
       e.stopPropagation();
 
-      const point = pointerEventToCanvasPoint(e, camera);
+      const point = pointerEventToCanvasPoint(e, camera, scale);
       if (!self.presence.selection.includes(layerId)) {
         setMyPresence(
           {
@@ -438,7 +472,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
           },
           {
             addToHistory: true,
-          }
+          },
         );
       }
       setCanvasState({
@@ -446,7 +480,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         current: point,
       });
     },
-    [setCanvasState, camera, history, canvasState.mode]
+    [setCanvasState, camera, scale, history, canvasState.mode],
   );
 
   const layerIdsToColorSelection = useMemo(() => {
@@ -489,6 +523,15 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     };
   }, [deleteLayers, history]);
 
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    svg.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      svg.removeEventListener("wheel", onWheel);
+    };
+  }, [onWheel]);
+
   return (
     <main className="h-full w-full relative bg-neutral-100 touch-none">
       <Info boardId={boardId} />
@@ -503,8 +546,12 @@ export const Canvas = ({ boardId }: CanvasProps) => {
       />
       <SelectionTools camera={camera} setLastUsedColor={setLastUsedColor} />
       <svg
+        ref={svgRef}
         className="h-[100vh] w-[100vw]"
-        onWheel={onWheel}
+        style={{
+          cursor:
+            canvasState.mode === CanvasMode.Panning ? "grabbing" : "default",
+        }}
         onPointerMove={onPointerMove}
         onPointerLeave={onPointerLeave}
         onPointerUp={onPointerUp}
@@ -512,7 +559,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
       >
         <g
           style={{
-            transform: `translate(${camera.x}px, ${camera.y}px)`,
+            transform: `translate(${camera.x}px, ${camera.y}px) scale(${scale})`,
           }}
         >
           {layersIds.map((layerId) => (
